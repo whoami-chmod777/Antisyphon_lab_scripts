@@ -7,7 +7,7 @@
 #>
 
 # Disabling Hyper-V
-Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Hypervisor
+Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
 bcdedit /set hypervisorlaunchtype off
 bcdedit /set vsmlaunchtype off
 
