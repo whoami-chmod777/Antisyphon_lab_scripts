@@ -14,6 +14,8 @@ $banner = @"
 "@
 
 Write-Host $banner -ForegroundColor Cyan
+Write-Host "`n`n`n"
+
 
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -36,10 +38,12 @@ function winadhd_prep {
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -Value "0"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "0"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value "0"
+
+        Write-Host "Disable Settings and Features."
     }
     catch {
         Write-Host $_.Exception.Message
-        Write-Host "The script didn't run as expected, please run it again"
+        Write-Host "The script didn't run as expected, please run it again."
     }
 }
 
@@ -55,6 +59,8 @@ function reverse_settings {
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -Value "1"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "1"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value "1"
+
+        Write-Host "Enable Settings and Features, successful reversing."
     }
     catch {
         Write-Host $_.Exception.Message
@@ -63,7 +69,7 @@ function reverse_settings {
     
 }
 
-$choice = Read-Host "Do you want to disable features/settings or reverse the settings? (Y) to disable (R) to reverse the process"
+$choice = $(Write-Host "Do you want to disable features/settings or reverse the settings? (Y) to disable (R) to reverse the process: " -ForegroundColor yellow; Read-Host)
 $choice = $choice.ToUpper()
 
 if ($choice -eq "Y") {
