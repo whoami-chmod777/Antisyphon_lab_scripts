@@ -2,7 +2,7 @@
  Script for Disabling Hyper-V and Device Guar.
  This script aims to help students prepare their host machine for WINADHD VM Lab.
  Caution/Disclaimer: Under no circustances does this script provide garantees or warranties, Full responsibility relies on you to test the script for your Lab Environment.
- Note: It's recommended to setup the lab on your personal lab environment and to avoid using work environment to maintati
+ Note: It's recommended to setup the lab on your personal lab environment and to avoid using work machine, as the script turns of some security settings.
 #>
 
 # Banner
