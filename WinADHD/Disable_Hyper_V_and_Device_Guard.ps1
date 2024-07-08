@@ -18,6 +18,7 @@ Write-Host "`n`n`n"
 
 # Config file path
 $configFile = "$env:USERPROFILE\winadhd_config.json"
+$flagFile = "$env:USERPROFILE\winadhd_flag.json"
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     # Relaunch the script with elevated privileges
@@ -50,15 +51,45 @@ function load_config {
     }
 }
 
+# Function to save the flag for restart needed
+function save_flag {
+    $flag = @{
+        RestartNeeded = $true
+    }
+    $flag | ConvertTo-Json | Set-Content -Path $flagFile
+}
+
+# Function to load the flag
+function load_flag {
+    if (Test-Path $flagFile) {
+        return (Get-Content -Path $flagFile | ConvertFrom-Json).RestartNeeded
+    }
+    return $false
+}
+
+# Function to schedule the script to run after restart
+function schedule_script {
+    $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    Register-ScheduledTask -TaskName "WinADHD_PostRestart" -Action $action -Trigger $trigger -Settings $settings -Principal $principal
+}
+
+# Function to remove the scheduled task after use
+function remove_scheduled_task {
+    Unregister-ScheduledTask -TaskName "WinADHD_PostRestart" -Confirm:$false
+}
+
 # Function that disables settings and features to prep host for WINADHD Lab VM
 function winadhd_prep {
     try {
         save_config
 
         # Disabling Hyper-V, WSL, and Virtual Machine Platform
-        Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
-        Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-        Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+        Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart
+        Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart
+        Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart
         bcdedit /set hypervisorlaunchtype off
         bcdedit /set vsmlaunchtype off 
     
@@ -67,7 +98,12 @@ function winadhd_prep {
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "0"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value "0"
 
-        Write-Host "Disabled Settings and Features."
+        # Indicate that a restart is needed and schedule the script to run after restart
+        save_flag
+        schedule_script
+
+        Write-Host "Settings and features disabled. A restart is required. The script will continue after the restart."
+        Restart-Computer
     }
     catch {
         Write-Host $_.Exception.Message
@@ -82,23 +118,23 @@ function reverse_settings {
 
         # Restoring Hyper-V
         if ($config.HyperV -eq "Enabled") {
-            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
+            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart
         } else {
-            Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
+            Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart
         }
         
         # Restoring WSL
         if ($config.WSL -eq "Enabled") {
-            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart
         } else {
-            Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+            Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart
         }
 
         # Restoring Virtual Machine Platform
         if ($config.VirtualMachinePlatform -eq "Enabled") {
-            Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+            Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart
         } else {
-            Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+            Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart
         }
 
         # Restoring boot configuration
@@ -110,7 +146,8 @@ function reverse_settings {
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value $config.SystemGuard
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value $config.EnableVirtualizationBasedSecurity
 
-        Write-Host "Enabled Settings and Features, successfully reversed."
+        Write-Host "Settings and features enabled. A restart is required to complete the process."
+        Restart-Computer
     }
     catch {
         Write-Host $_.Exception.Message
@@ -118,14 +155,22 @@ function reverse_settings {
     }
 }
 
-$choice = $(Write-Host "Do you want to disable features/settings or reverse the settings? (Y) to disable (R) to reverse the process: " -ForegroundColor Yellow; Read-Host)
-$choice = $choice.ToUpper()
-
-if ($choice -eq "Y") {
-    winadhd_prep
-} elseif ($choice -eq "R") {
+# Main logic
+if (load_flag) {
+    # If the script was scheduled to run after restart, remove the flag and the scheduled task
+    Remove-Item $flagFile
+    remove_scheduled_task
     reverse_settings
 } else {
-    Write-Host "Invalid Choice. Exiting!"
-    return
+    $choice = $(Write-Host "Do you want to disable features/settings or reverse the settings? (Y) to disable (R) to reverse the process: " -ForegroundColor Yellow; Read-Host)
+    $choice = $choice.ToUpper()
+
+    if ($choice -eq "Y") {
+        winadhd_prep
+    } elseif ($choice -eq "R") {
+        reverse_settings
+    } else {
+        Write-Host "Invalid Choice. Exiting!"
+        return
+    }
 }
