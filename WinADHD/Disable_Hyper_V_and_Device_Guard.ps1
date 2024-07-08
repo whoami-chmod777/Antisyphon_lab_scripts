@@ -1,5 +1,5 @@
 <#
- Script for Disabling Hyper-V and Device Guard.
+ Script for Disabling Hyper-V, Device Guard, WSL, and Virtual Machine Platform.
  This script aims to help students prepare their host machine for WINADHD VM Lab.
  Caution/Disclaimer: Under no circumstances does this script provide guarantees or warranties. Full responsibility lies with you to test the script for your Lab Environment.
  Note: It's recommended to set up the lab on your personal lab environment and to avoid using a work machine, as the script turns off some security settings.
@@ -29,6 +29,8 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 function save_config {
     $config = @{
         HyperV = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All).State
+        WSL = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).State
+        VirtualMachinePlatform = (Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State
         HypervisorLaunchType = (bcdedit /enum {current} | Select-String "hypervisorlaunchtype").Line
         VsmLaunchType = (bcdedit /enum {current} | Select-String "vsmlaunchtype").Line
         HypervisorEnforcedCodeIntegrity = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity").Enabled
@@ -53,8 +55,10 @@ function winadhd_prep {
     try {
         save_config
 
-        # Disabling Hyper-V
+        # Disabling Hyper-V, WSL, and Virtual Machine Platform
         Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
+        Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+        Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
         bcdedit /set hypervisorlaunchtype off
         bcdedit /set vsmlaunchtype off 
     
@@ -83,6 +87,20 @@ function reverse_settings {
             Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
         }
         
+        # Restoring WSL
+        if ($config.WSL -eq "Enabled") {
+            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+        } else {
+            Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+        }
+
+        # Restoring Virtual Machine Platform
+        if ($config.VirtualMachinePlatform -eq "Enabled") {
+            Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+        } else {
+            Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+        }
+
         # Restoring boot configuration
         bcdedit /set hypervisorlaunchtype $($config.HypervisorLaunchType -split " ")[-1]
         bcdedit /set vsmlaunchtype $($config.VsmLaunchType -split " ")[-1]
