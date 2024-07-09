@@ -1,10 +1,3 @@
-<#
- Script for Disabling Hyper-V, Device Guard, WSL, and Virtual Machine Platform.
- This script aims to help students prepare their host machine for WINADHD VM Lab.
- Caution/Disclaimer: Under no circumstances does this script provide guarantees or warranties. Full responsibility lies with you to test the script for your Lab Environment.
- Note: It's recommended to set up the lab on your personal lab environment and to avoid using a work machine, as the script turns off some security settings.
-#>
-
 # Banner
 $banner = @"
  __      _____ _  _   _   ___  _  _ ___    ___ ___ ___ ___     __  ___ _____   _____ ___  ___ ___ 
@@ -28,9 +21,9 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # Function to save the current configuration
 function save_config {
     $config = @{
-        HyperV = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All).State
-        WSL = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).State
-        VirtualMachinePlatform = (Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State
+        HyperV = if ((Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All).State -eq "Enabled") { "Enabled" } else { "Disabled" }
+        WSL = if ((Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).State -eq "Enabled") { "Enabled" } else { "Disabled" }
+        VirtualMachinePlatform = if ((Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State -eq "Enabled") { "Enabled" } else { "Disabled" }
         HypervisorLaunchType = (bcdedit /enum {current} | Select-String "hypervisorlaunchtype").Line
         VsmLaunchType = (bcdedit /enum {current} | Select-String "vsmlaunchtype").Line
         HypervisorEnforcedCodeIntegrity = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity").Enabled
@@ -67,7 +60,7 @@ function winadhd_prep {
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "0"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value "0"
 
-        Write-Host "Settings and features have been disabled. Please restart your computer for changes to take effect."
+        Write-Host "Settings and features have been disabled."
     }
     catch {
         Write-Host $_.Exception.Message
