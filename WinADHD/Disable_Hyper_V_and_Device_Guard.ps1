@@ -69,7 +69,7 @@ function winadhd_prep {
 
         Write-Host "Settings and features have been disabled. Computer needs to restart to take effect, would you like to restart now?"
         restart_status = $(Write-Host "(Y) to restart now, press any key to restart later" -ForegroundColor Yellow; Read-Host)
-        restart_status = restart_status.ToUpper()
+        restart_status = $restart_status.ToUpper()
         if (restart_status -eq 'Y') { Restart-Computer }
     }
     catch {
