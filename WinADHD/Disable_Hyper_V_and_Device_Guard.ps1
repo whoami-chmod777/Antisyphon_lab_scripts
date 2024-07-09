@@ -34,7 +34,7 @@ function save_config {
         HypervisorLaunchType = (bcdedit /enum {current} | Select-String "hypervisorlaunchtype").Line
         VsmLaunchType = (bcdedit /enum {current} | Select-String "vsmlaunchtype").Line
         HypervisorEnforcedCodeIntegrity = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity").Enabled
-        # SystemGuard = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard").Enabled
+        SystemGuard = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard").Enabled
         EnableVirtualizationBasedSecurity = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard").EnableVirtualizationBasedSecurity
     }
     $config | ConvertTo-Json | Set-Content -Path $configFile
@@ -64,10 +64,10 @@ function winadhd_prep {
     
         # Set Device Guard Off
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -Value "0"
-        # Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "0"
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "0"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value "0"
 
-        Write-Host "Settings and features have been disabled."
+        Write-Host "Settings and features have been disabled. Please restart your computer for changes to take effect."
     }
     catch {
         Write-Host $_.Exception.Message
@@ -107,7 +107,7 @@ function reverse_settings {
     
         # Restoring Device Guard settings
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -Value $config.HypervisorEnforcedCodeIntegrity
-        # Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value $config.SystemGuard
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value $config.SystemGuard
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value $config.EnableVirtualizationBasedSecurity
 
         Write-Host "Settings and features have been restored. Please restart your computer for changes to take effect."
@@ -135,6 +135,6 @@ if ($choice -eq "Y") {
     return
 }
 
-restart_status = $(Write-Host "Computer needs to restart to take effect, would you like to restart now? (Y) to restart now, press any key to restart later" -ForegroundColor Yellow; Read-Host)
-restart_status = $restart_status.ToUpper()
-if (restart_status -eq 'Y') { Restart-Computer -Force }
+$restart_status = $(Write-Host "Computer needs to restart to take effect, would you like to restart now? (Y) to restart now, press any key to restart later" -ForegroundColor Yellow; Read-Host)
+$restart_status = $restart_status.ToUpper()
+if ($restart_status -eq 'Y') { Restart-Computer -Force }
