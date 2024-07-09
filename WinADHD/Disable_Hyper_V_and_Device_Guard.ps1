@@ -67,10 +67,7 @@ function winadhd_prep {
         # Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard" -Name "Enabled" -Value "0"
         Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name "EnableVirtualizationBasedSecurity" -Value "0"
 
-        Write-Host "Settings and features have been disabled. Computer needs to restart to take effect, would you like to restart now?"
-        restart_status = $(Write-Host "(Y) to restart now, press any key to restart later" -ForegroundColor Yellow; Read-Host)
-        restart_status = $restart_status.ToUpper()
-        if (restart_status -eq 'Y') { Restart-Computer -Force }
+        Write-Host "Settings and features have been disabled."
     }
     catch {
         Write-Host $_.Exception.Message
@@ -137,3 +134,7 @@ if ($choice -eq "Y") {
     Write-Host "Invalid Choice. Exiting!"
     return
 }
+
+restart_status = $(Write-Host "Computer needs to restart to take effect, would you like to restart now? (Y) to restart now, press any key to restart later" -ForegroundColor Yellow; Read-Host)
+restart_status = $restart_status.ToUpper()
+if (restart_status -eq 'Y') { Restart-Computer -Force }
