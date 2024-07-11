@@ -54,7 +54,6 @@ $DeviceGuardPath = "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard"
 $DeviceGuardKey = "EnableVirtualizationBasedSecurity"
 
 
-
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     # Relaunch the script with elevated privileges
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
@@ -121,7 +120,30 @@ function Get-RegVal-IncludingExistence {
         } 
 }
 
+<# Basic function to perform repetitive checks for installed features and return a string of installation status
+        Looks up the state of a windows feature with name $FeatureName.  
+           If defined, it returns the "ToString()" of the retrieved state 
+                (as the Type of these returns is FeatureState, which does 
+                not de-serialize properly without explicit typing).
+            If status is null / undefined, returns "" (the empty string)
 
+  - LokiHakanin
+    #>
+
+function GetFeatureStatusAsString {
+    param (
+        [parameter(Mandatory=$true)][ValidateNotNullOrEmpty()] $FeatureName
+        )
+    $temp = (Get-WindowsOptionalFeature -Online -FeatureName $FeatureName).State
+    if (($null -eq $Temp) -or ("" -eq $Temp)) 
+        { 
+        return "" 
+        } 
+    else 
+        { 
+        return $temp.ToString() 
+        } 
+}
 
 # Function to save the current configuration
 function save_config {
@@ -132,11 +154,11 @@ function save_config {
         "Enabled" means exists, is enabled
         "Disabled" means exists, but is disabled 
         #>
-        $config.HyperV = if ((Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All).State -eq "Enabled") { "Enabled" } else { "Disabled" }
-        $config.WSL = if ((Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux).State -eq "Enabled") { "Enabled" } else { "Disabled" }
-        $config.VirtualMachinePlatform = if ((Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform).State -eq "Enabled") { "Enabled" } else { "Disabled" }
-        $config.HypervisorPlatform = if ((Get-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform).State -eq "Enabled") { "Enabled" } else { "Disabled" }
-    
+        $config.HyperV = GetFeatureStatusAsString("Microsoft-Hyper-V-All")
+        $config.WSL = GetFeatureStatusAsString("Microsoft-Windows-Subsystem-Linux")
+        $config.VirtualMachinePlatform = GetFeatureStatusAsString("VirtualMachinePlatform")
+        $config.HypervisorPlatform = GetFeatureStatusAsString("HypervisorPlatform")
+
         <# Boot Configuration Data - 
            null string means undefined / not configured (DOES NOT MEAN DISABLED) 
            #>
