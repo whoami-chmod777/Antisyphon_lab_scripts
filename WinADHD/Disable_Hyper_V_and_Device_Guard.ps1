@@ -1,3 +1,11 @@
+<#
+ Script for disabling features and setting for John Strand Class Lab VM, WINADHD.
+ This script aims to help students easily setup their host machine to be compatible to Lab VM preferences and revert back to previous mode when necessary
+ Caution: Under no circustances does this script provide garantees or warranties, Full responsibility relies on you to test the script for your Environment.
+ Caution: Not recommended to run in production machines, user on your personal computers
+#>
+
+
 #optional Debug Param
 ##    -LokiHakanin
 param (
